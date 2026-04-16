@@ -31,6 +31,15 @@ buf_3km <- terra::buffer(pts_sirgas, width = 3000)
 buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 
 
+# Convertendo os buffers novamente para WGS
+
+buf_500m <- terra::project(buf_500m, 'EPSG:4326')
+buf_1km <- terra::project(buf_1km, 'EPSG:4326')
+buf_2km <- terra::project(buf_2km, 'EPSG:4326')
+buf_3km <- terra::project(buf_3km, 'EPSG:4326')
+buf_5km <- terra::project(buf_5km, 'EPSG:4326')
+
+
 
 
 
