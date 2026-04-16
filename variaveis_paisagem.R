@@ -41,6 +41,6 @@ mb_br_22_SIRGAS <- project(mb_br_22, "EPSG:5641", method = "near")
 
 output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
   
-#writeRaster(mb_br_22_SIRGAS, paste0(output, "clay_fraction_0_10.tif"),     
-#            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+writeRaster(mb_br_22_SIRGAS, paste0(output, "mb_br_22_SIRGAS.tif"),     
+            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
 
