@@ -46,6 +46,9 @@ writeRaster(mb_br_15_SIRGAS, paste0(output, "mb_br_15_SIRGAS.tif"),
 
 mb_br_15_SIRGAS_crop <- mask(mb_br_15_SIRGAS, vect(as.polygons(ext(buf_5km))))
 
+writeRaster(mb_br_15_SIRGAS_crop, paste0(output, "mb_br_15_SIRGAS_crop_ext.tif"),     
+            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+
 
 # garantir que o raster é categórico
 
