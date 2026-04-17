@@ -8,9 +8,8 @@ rm(list = ls())
 #remotes::install_github("mauriciovancine/atlanticr")
 
 library(terra)
-library(atlanticr)
-
-unique(atlanticr::atlantic_spatial$metric_group)
+library(landscapemetrics)
+library(dplyr)
 
 
 
@@ -43,4 +42,19 @@ output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
   
 writeRaster(mb_br_22_SIRGAS, paste0(output, "mb_br_22_SIRGAS.tif"),     
             gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+
+
+# cortando a extensão do mapbiomas para a extensão dos polígonos
+
+mb_br_22_SIRGAS_crop <- mask(mb_br_22_SIRGAS, vect(as.polygons(ext(buf_5km))))
+
+
+# garantir que o raster é categórico
+
+mb_m <- as.int(mb_m)
+
+
+
+
+
 
