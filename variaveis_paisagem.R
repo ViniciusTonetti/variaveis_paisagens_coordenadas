@@ -1,6 +1,5 @@
 # Extraindo vaiárveis paisagem para coordenadas específicas
 
-
 # pacotes e limpando ambiente --------------------------------------------------
 
 rm(list = ls())
@@ -10,6 +9,7 @@ rm(list = ls())
 library(terra)
 library(landscapemetrics)
 library(dplyr)
+library(tidyr)
 
 
 # pontos e buffers -------------------------------------------------------------
@@ -86,7 +86,6 @@ mets_forest <- mets %>%
   filter(class == 3) %>%
   rename(sample_id = plot_id) %>%
   select(sample_id, metric, value)
-
 
 
 # converter para formato largo: uma linha por buffer
