@@ -10,6 +10,7 @@ library(terra)
 library(landscapemetrics)
 library(dplyr)
 library(tidyr)
+library(usdm)
 
 
 # pontos e buffers -------------------------------------------------------------
@@ -57,6 +58,7 @@ buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 
 
 ## Métricas para buffer 5km ----------------------------------------------------
+################################################################################
 
 mb_br_15_SIRGAS_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_SIRGAS_crop_ext.tif")
 
@@ -67,7 +69,7 @@ buf_5km$sample_id <- 1:nrow(buf_5km)
 mets <- sample_lsm(
   landscape = mb_br_15_SIRGAS_crop,
   y = buf_5km,
-  what = c("lsm_c_pland", #% de floresta no buffer
+  what = c("lsm_c_pland", #% de floresta na paisagem
            "lsm_c_ed", # densidade de borda da floresta
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
@@ -99,9 +101,30 @@ mets_forest_wide <- mets_forest %>%
 buf_att <- as.data.frame(buf_5km)
 
 # juntar métricas aos municípios
-result <- buf_att %>%
+result_5km <- buf_att %>%
   left_join(mets_forest_wide, by = "sample_id")
 
-result
+result_5km
+
+
+# Calculando o VIF para o buffer de 5km ----------------------------------------
+
+df_vif_5km <- result %>% 
+  select(area_mn, clumpy, core_mn, ed, enn_mn, lsi, np, pland)
+
+vif_5km <- vifstep(df_vif_5km, th = 5)
+vif_5km
+
+df_selected <- exclude(df_vif_5km, vif_5km)
+
+# Variáveis mantidas após exclusão da correlação
+
+# clumpy - agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada
+# ed - densidade de borda da floresta
+# enm_mn - distância média ao fragmento mais próximo
+# np - número de fragmentos
+# pland - % de floresta na paisagem
+
+
 
 
