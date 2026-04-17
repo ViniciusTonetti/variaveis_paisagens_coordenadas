@@ -44,15 +44,18 @@ writeRaster(mb_br_15_SIRGAS, paste0(output, "mb_br_15_SIRGAS.tif"),
 
 # cortando a extensão do mapbiomas para a extensão dos polígonos
 
-mb_br_15_SIRGAS_crop <- mask(mb_br_15_SIRGAS, vect(as.polygons(ext(buf_5km))))
+mb_br_15_SIRGAS_crop <- crop(mb_br_15_SIRGAS, buf_5km)
+
+plot(mb_br_15_SIRGAS_crop)# garantir que o raster é categórico
+
+mb_br_15_SIRGAS_crop <- as.int(mb_br_15_SIRGAS_crop)
+
 
 writeRaster(mb_br_15_SIRGAS_crop, paste0(output, "mb_br_15_SIRGAS_crop_ext.tif"),     
             gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
 
 
-# garantir que o raster é categórico
 
-mb_br_15_SIRGAS_crop <- as.int(mb_br_15_SIRGAS_crop)
 
 
 
