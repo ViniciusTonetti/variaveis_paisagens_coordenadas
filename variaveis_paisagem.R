@@ -66,7 +66,7 @@ mb_br_15_SIRGAS_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem co
 buf_5km$sample_id <- 1:nrow(buf_5km)
 
 # calcular métricas por polígono
-mets <- sample_lsm(
+mets_5km <- sample_lsm(
   landscape = mb_br_15_SIRGAS_crop,
   y = buf_5km,
   what = c("lsm_c_pland", #% de floresta na paisagem
@@ -84,14 +84,14 @@ mets <- sample_lsm(
 
 
 # manter apenas a classe floresta = 3
-mets_forest <- mets %>%
+mets_forest_5km <- mets_5km %>%
   filter(class == 3) %>%
   rename(sample_id = plot_id) %>%
   select(sample_id, metric, value)
 
 
 # converter para formato largo: uma linha por buffer
-mets_forest_wide <- mets_forest %>%
+mets_forest_wide <- mets_forest_5km %>%
   pivot_wider(
     names_from = metric,
     values_from = value
@@ -125,6 +125,154 @@ df_selected <- exclude(df_vif_5km, vif_5km)
 # np - número de fragmentos
 # pland - % de floresta na paisagem
 
+variaveis_mantidas <- colnames(df_selected )
 
+
+## Métricas para buffer 3km ----------------------------------------------------
+################################################################################
+
+# garantir que há um ID único por polígono
+buf_3km$sample_id <- 1:nrow(buf_3km)
+
+# calcular métricas por polígono
+mets_3km <- sample_lsm(
+  landscape = mb_br_15_SIRGAS_crop,
+  y = buf_3km,
+  what = c("lsm_c_pland", #% de floresta na paisagem
+           "lsm_c_ed", # densidade de borda da floresta
+           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
+           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
+           "lsm_c_np", # número de fragmentos
+           "lsm_c_enn_mn", # distância média ao fragmento mais próximo
+           "lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada
+           "lsm_l_shdi", # índice de diversidade de shannon
+           "lsm_l_pr", # número de tipos de uso da terra
+           "lsm_c_core_mn"), # área média de interior de floresta
+  edge_depth = 1 # profundidade de borda = 1 célula, ~30m
+)
+
+
+# manter apenas a classe floresta = 3
+mets_forest_3km <- mets_3km %>%
+  filter(class == 3) %>%
+  rename(sample_id = plot_id) %>%
+  select(sample_id, metric, value)
+
+
+# converter para formato largo: uma linha por buffer
+mets_forest_wide <- mets_forest_3km %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = value
+  )
+
+
+buf_att <- as.data.frame(buf_3km)
+
+# juntar métricas aos municípios
+result_3km <- buf_att %>%
+  left_join(mets_forest_wide, by = "sample_id")
+
+result_3km
+
+
+## Métricas para buffer 2km ----------------------------------------------------
+################################################################################
+
+# garantir que há um ID único por polígono
+buf_2km$sample_id <- 1:nrow(buf_2km)
+
+# calcular métricas por polígono
+mets_2km <- sample_lsm(
+  landscape = mb_br_15_SIRGAS_crop,
+  y = buf_2km,
+  what = c("lsm_c_pland", #% de floresta na paisagem
+           "lsm_c_ed", # densidade de borda da floresta
+           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
+           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
+           "lsm_c_np", # número de fragmentos
+           "lsm_c_enn_mn", # distância média ao fragmento mais próximo
+           "lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada
+           "lsm_l_shdi", # índice de diversidade de shannon
+           "lsm_l_pr", # número de tipos de uso da terra
+           "lsm_c_core_mn"), # área média de interior de floresta
+  edge_depth = 1 # profundidade de borda = 1 célula, ~30m
+)
+
+
+# manter apenas a classe floresta = 3
+mets_forest_2km <- mets_2km %>%
+  filter(class == 3) %>%
+  rename(sample_id = plot_id) %>%
+  select(sample_id, metric, value)
+
+
+# converter para formato largo: uma linha por buffer
+mets_forest_wide <- mets_forest_2km %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = value
+  )
+
+
+buf_att <- as.data.frame(buf_2km)
+
+# juntar métricas aos municípios
+result_2km <- buf_att %>%
+  left_join(mets_forest_wide, by = "sample_id")
+
+head(result_2km)
+head(result_3km)
+head(result_5km)
+
+
+## Métricas para buffer 1km ----------------------------------------------------
+################################################################################
+
+# garantir que há um ID único por polígono
+buf_1km$sample_id <- 1:nrow(buf_1km)
+
+# calcular métricas por polígono
+mets_1km <- sample_lsm(
+  landscape = mb_br_15_SIRGAS_crop,
+  y = buf_1km,
+  what = c("lsm_c_pland", #% de floresta na paisagem
+           "lsm_c_ed", # densidade de borda da floresta
+           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
+           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
+           "lsm_c_np", # número de fragmentos
+           "lsm_c_enn_mn", # distância média ao fragmento mais próximo
+           "lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada
+           "lsm_l_shdi", # índice de diversidade de shannon
+           "lsm_l_pr", # número de tipos de uso da terra
+           "lsm_c_core_mn"), # área média de interior de floresta
+  edge_depth = 1 # profundidade de borda = 1 célula, ~30m
+)
+
+
+# manter apenas a classe floresta = 3
+mets_forest_1km <- mets_1km %>%
+  filter(class == 3) %>%
+  rename(sample_id = plot_id) %>%
+  select(sample_id, metric, value)
+
+
+# converter para formato largo: uma linha por buffer
+mets_forest_wide <- mets_forest_1km %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = value
+  )
+
+
+buf_att <- as.data.frame(buf_1km)
+
+# juntar métricas aos municípios
+result_1km <- buf_att %>%
+  left_join(mets_forest_wide, by = "sample_id")
+
+head(result_2km)
+head(result_3km)
+head(result_5km)
 
 
