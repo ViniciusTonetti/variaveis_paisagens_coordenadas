@@ -11,6 +11,7 @@ library(landscapemetrics)
 library(dplyr)
 library(tidyr)
 library(usdm)
+library(openxlsx)
 
 
 # pontos e buffers -------------------------------------------------------------
@@ -109,8 +110,8 @@ result_5km
 
 # Calculando o VIF para o buffer de 5km ----------------------------------------
 
-df_vif_5km <- result %>% 
-  select(area_mn, clumpy, core_mn, ed, enn_mn, lsi, np, pland)
+df_vif_5km <- result_5km %>% 
+  select(area_mn, core_mn, ed, lsi, np, pland)
 
 vif_5km <- vifstep(df_vif_5km, th = 5)
 vif_5km
@@ -328,5 +329,40 @@ head(result_2km)
 head(result_3km)
 head(result_5km)
 
+
+## Exportando os resultados para excel -----------------------------------------
+################################################################################
+
 variaveis_mantidas
+
+result_500m <- result_500m[, c("mun", "latitude", "longitude", "sample_id", variaveis_mantidas)]
+result_1km <- result_1km[, c("mun", "latitude", "longitude", "sample_id", variaveis_mantidas)]
+result_2km <- result_2km[, c("mun", "latitude", "longitude", "sample_id", variaveis_mantidas)]
+result_3km <- result_3km[, c("mun", "latitude", "longitude", "sample_id", variaveis_mantidas)]
+result_5km <- result_5km[, c("mun", "latitude", "longitude", "sample_id", variaveis_mantidas)]
+
+
+# criar workbook
+wb <- createWorkbook()
+
+# adicionar abas com os nomes desejados
+addWorksheet(wb, "result_500m")
+addWorksheet(wb, "result_1km")
+addWorksheet(wb, "result_2km")
+addWorksheet(wb, "result_3km")
+addWorksheet(wb, "result_5km")
+
+# escrever dados em cada aba
+writeData(wb, "result_500m", result_500m)
+writeData(wb, "result_1km", result_1km)
+writeData(wb, "result_2km", result_2km)
+writeData(wb, "result_3km", result_3km)
+writeData(wb, "result_5km", result_5km)
+
+# salvar arquivo
+output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/planilha_resultados/"
+saveWorkbook(wb, paste0(output, "landscape_metrics.xlsx"), overwrite = TRUE)
+
+
+
 
