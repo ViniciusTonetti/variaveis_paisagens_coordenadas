@@ -19,8 +19,18 @@ library(openxlsx)
 pts <- terra::vect("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/pontos/pts_paisagens.shp")
 
 
+# Considerando apenas os pontos que foram usados nas análises
+
+pts$mun
+
+
+pts_filtered <- pts[!pts$mun %in% c("Campo Mour�o", "Cruzeiro", "Piraju", "Santa Helena"), ]
+
+pts_filtered$mun
+
+
 # convertendopara sirgas para criar os buffers
-pts_sirgas <- terra::project(pts, "EPSG:5641")
+pts_sirgas <- terra::project(pts_filtered, "EPSG:5641")
 
 
 # criando os buffers de 2 km
