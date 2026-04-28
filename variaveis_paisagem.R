@@ -129,8 +129,7 @@ mets_5km <- sample_lsm(
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1 # profundidade de borda = 1 célula, ~30m
-)
+  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
 
 
 # métricas de paisagem, shannon e número de tipos de cobertura da terra
@@ -158,11 +157,14 @@ mets_comb <- mets_landscape %>%
             by = "plot_id")
 
 
+mets_comb$mun_name <- buf_5km$mun
+
+
 # Calculando o VIF para o buffer de 5km ----------------------------------------
 
 mets_comb_df <- data.frame(mets_comb[,2:10])
 
-vif_5km <- vifstep(mets_comb_df, th = 5)
+vif_5km <- vifstep(mets_comb_df, th = 3)
 vif_5km
 
 df_selected <- exclude(mets_comb_df, vif_5km)
@@ -193,8 +195,6 @@ mets_3km <- sample_lsm(
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
            "lsm_c_np", # número de fragmentos
-           #"lsm_c_enn_mn", # distância média ao fragmento mais próximo # desconsiderei pq para buf500 m alguns valores apareceram como NA, muita floresta
-           #"lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada # desconsiderei pq para buf500 m alguns valores apareceram como NA
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
@@ -241,8 +241,6 @@ mets_2km <- sample_lsm(
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
            "lsm_c_np", # número de fragmentos
-           #"lsm_c_enn_mn", # distância média ao fragmento mais próximo # desconsiderei pq para buf500 m alguns valores apareceram como NA, muita floresta
-           #"lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada # desconsiderei pq para buf500 m alguns valores apareceram como NA
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
@@ -291,8 +289,6 @@ mets_1km <- sample_lsm(
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
            "lsm_c_np", # número de fragmentos
-           #"lsm_c_enn_mn", # distância média ao fragmento mais próximo # desconsiderei pq para buf500 m alguns valores apareceram como NA, muita floresta
-           #"lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada # desconsiderei pq para buf500 m alguns valores apareceram como NA
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
@@ -342,8 +338,6 @@ mets_500m <- sample_lsm(
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
            "lsm_c_np", # número de fragmentos
-           #"lsm_c_enn_mn", # distância média ao fragmento mais próximo # desconsiderei pq para buf500 m alguns valores apareceram como NA, muita floresta
-           #"lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada # desconsiderei pq para buf500 m alguns valores apareceram como NA
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
