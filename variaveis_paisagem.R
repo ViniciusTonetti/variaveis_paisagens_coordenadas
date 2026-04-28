@@ -119,14 +119,33 @@ mets_5km <- sample_lsm(
 
 unique(mets_5km$metric)
 
-mets_5km %>% 
-  filter(metric == 'shdi')
 
-# manter apenas a classe floresta = 3
-mets_forest_5km <- mets_5km %>%
-  filter(class == 3) %>%
-  rename(sample_id = plot_id) %>%
-  select(sample_id, metric, value)
+# métricas de paisagem, shannon e número de tipos de cobertura da terra
+
+mets_landscape <- mets_5km %>% 
+  filter(level == "landscape",
+         metric %in% c("shdi", "pr"))
+
+# métricas de classe 3, floresta
+
+mets_forest <- mets_5km %>% 
+  filter(level == "class",
+         class == 3)
+
+# Unindo os tibbles baseado em plot id
+
+mets_comb <- mets_landscape %>%
+  select(plot_id, metric, value) %>%
+  tidyr::pivot_wider(names_from = metric, values_from = value) %>%
+  left_join(
+    mets_forest %>%
+      select(plot_id, metric, value) %>%
+      tidyr::pivot_wider(names_from = metric, values_from = value),
+    by = "plot_id"
+  )
+
+
+
 
 
 # converter para formato largo: uma linha por buffer
