@@ -94,10 +94,27 @@ buf_5km <- terra::project(buf_5km, "EPSG:4326")
 ## Métricas para buffer 5km ----------------------------------------------------
 ################################################################################
 
+# calculando idade dos frags ---------------------------------------------------
+
+idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+
+
+idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_5km, df = TRUE) %>%
+  rename(idade = lyr.1) %>%
+  group_by(ID) %>%
+  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
+            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
+            idade_media_floresta = ifelse(n_pixels_floresta > 0,
+                                          soma_idade_floresta / n_pixels_floresta,
+                                          NA_real_), .groups = "drop") %>% 
+  select(ID, idade_media_floresta) %>% 
+  rename(plot_id = ID)
+
+
+# Calculando demais métricas da paisagem ---------------------------------------
+
 mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
 
-# garantir que há um ID único por polígono
-buf_5km$sample_id <- 1:nrow(buf_5km)
 
 # calcular métricas por polígono
 
@@ -109,15 +126,11 @@ mets_5km <- sample_lsm(
            "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
            "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
            "lsm_c_np", # número de fragmentos
-           #"lsm_c_enn_mn", # distância média ao fragmento mais próximo # desconsiderei pq para buf500 m alguns valores apareceram como NA, muita floresta
-           #"lsm_c_clumpy", # agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada # desconsiderei pq para buf500 m alguns valores apareceram como NA
            "lsm_l_shdi", # índice de diversidade de shannon
            "lsm_l_pr", # número de tipos de uso da terra
            "lsm_c_core_mn"), # área média de interior de floresta
   edge_depth = 1 # profundidade de borda = 1 célula, ~30m
 )
-
-unique(mets_5km$metric)
 
 
 # métricas de paisagem, shannon e número de tipos de cobertura da terra
@@ -137,51 +150,30 @@ mets_forest <- mets_5km %>%
 mets_comb <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
-  left_join(
-    mets_forest %>%
-      select(plot_id, metric, value) %>%
-      tidyr::pivot_wider(names_from = metric, values_from = value),
-    by = "plot_id"
-  )
-
-
-
-
-
-# converter para formato largo: uma linha por buffer
-mets_forest_wide <- mets_forest_5km %>%
-  pivot_wider(
-    names_from = metric,
-    values_from = value
-  )
-
-
-buf_att <- as.data.frame(buf_5km)
-
-# juntar métricas aos municípios
-result_5km <- buf_att %>%
-  left_join(mets_forest_wide, by = "sample_id")
-
-result_5km
+  left_join(mets_forest %>%
+            select(plot_id, metric, value) %>%
+            tidyr::pivot_wider(names_from = metric, values_from = value),
+      by = "plot_id") %>%
+  left_join(idade_por_paisagem,
+            by = "plot_id")
 
 
 # Calculando o VIF para o buffer de 5km ----------------------------------------
 
-df_vif_5km <- result_5km %>% 
-  select(area_mn, core_mn, ed, lsi, np, pland)
+mets_comb_df <- data.frame(mets_comb[,2:10])
 
-vif_5km <- vifstep(df_vif_5km, th = 5)
+vif_5km <- vifstep(mets_comb_df, th = 5)
 vif_5km
 
-df_selected <- exclude(df_vif_5km, vif_5km)
+df_selected <- exclude(mets_comb_df, vif_5km)
 
 # Variáveis mantidas após exclusão da correlação
 
-# clumpy - agregação dos fragmentos; alto = floresta mais contínua, baixo = fragmentada
-# ed - densidade de borda da floresta
-# enm_mn - distância média ao fragmento mais próximo
+# pr - número de tipos de uso da terra
+# shdi - índice de diversidade de shannon
+# core_mn - área média de interior de floresta
 # np - número de fragmentos
-# pland - % de floresta na paisagem
+# idade dos pixels de floresta
 
 variaveis_mantidas <- colnames(df_selected )
 
