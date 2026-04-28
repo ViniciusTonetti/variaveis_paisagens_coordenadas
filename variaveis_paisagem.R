@@ -41,6 +41,9 @@ buf_2km <- terra::buffer(pts_sirgas, width = 2000)
 buf_3km <- terra::buffer(pts_sirgas, width = 3000)
 buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 
+
+# reconvertendo para WGS84
+
 buf_500m <- terra::project(buf_500m, "EPSG:4326")
 buf_1km <- terra::project(buf_1km, "EPSG:4326")
 buf_2km <- terra::project(buf_2km, "EPSG:4326")
@@ -77,9 +80,9 @@ buf_5km <- terra::project(buf_5km, "EPSG:4326")
 
 ## Cortando raster 2015 para a extensão dos buffers ano 2015
 
-mb_br_15 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/brazil_coverage_2015.tif")
+#mb_br_15 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/brazil_coverage_2015.tif")
 
-mb_br_15_crop <- crop(mb_br_15, buf_5km)
+#mb_br_15_crop <- crop(mb_br_15, buf_5km)
 
 #output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
 
@@ -91,14 +94,15 @@ mb_br_15_crop <- crop(mb_br_15, buf_5km)
 ## Métricas para buffer 5km ----------------------------------------------------
 ################################################################################
 
-mb_br_15_SIRGAS_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_SIRGAS_crop_ext.tif")
+mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 # garantir que há um ID único por polígono
 buf_5km$sample_id <- 1:nrow(buf_5km)
 
 # calcular métricas por polígono
+
 mets_5km <- sample_lsm(
-  landscape = mb_br_15_SIRGAS_crop,
+  landscape = mb_br_15_WGS84_crop ,
   y = buf_5km,
   what = c("lsm_c_pland", #% de floresta na paisagem
            "lsm_c_ed", # densidade de borda da floresta
@@ -113,6 +117,10 @@ mets_5km <- sample_lsm(
   edge_depth = 1 # profundidade de borda = 1 célula, ~30m
 )
 
+unique(mets_5km$metric)
+
+mets_5km %>% 
+  filter(metric == 'shdi')
 
 # manter apenas a classe floresta = 3
 mets_forest_5km <- mets_5km %>%
