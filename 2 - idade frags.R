@@ -67,3 +67,10 @@ idade_floresta_2015 <- app(stack_sp_pr, fun = function(x) {
 })
 
 
+plot(idade_floresta_2015)
+
+output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/"
+
+writeRaster(idade_floresta_2015, paste0(output, "idade_floresta_2015.tif"), 
+            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+
