@@ -9,16 +9,17 @@ library(terra)
 
 # Carregando rasters -----------------------------------------------------------
 
-
 raster_anual <- list.files("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual",
                            pattern = "brazil_coverage_", full.names = T)
 
 stack_br <- terra::rast(raster_anual)
 
+
 # Carregando polígono ----------------------------------------------------------
 
 sp_pr <- terra::vect("E:/_PESSOAL/ViniciusT/camadas Delano/br_uf/SP_PR/sp_pr_merge.shp")
 sp_pr <- terra::project(sp_pr, "EPSG:4326")
+
 
 # Cortando e binarizando rasters -----------------------------------------------
 
