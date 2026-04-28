@@ -41,6 +41,14 @@ buf_2km <- terra::buffer(pts_sirgas, width = 2000)
 buf_3km <- terra::buffer(pts_sirgas, width = 3000)
 buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 
+buf_500m <- terra::project(buf_500m, "EPSG:4326")
+buf_1km <- terra::project(buf_1km, "EPSG:4326")
+buf_2km <- terra::project(buf_2km, "EPSG:4326")
+buf_3km <- terra::project(buf_3km, "EPSG:4326")
+buf_5km <- terra::project(buf_5km, "EPSG:4326")
+
+
+
 
 # Cobertura da terra ano 2022 coleção 10 MapBiomas -----------------------------
 
@@ -66,6 +74,18 @@ buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 #writeRaster(mb_br_15_SIRGAS_crop, paste0(output, "mb_br_15_SIRGAS_crop_ext.tif"),     
 #            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
 
+
+## Cortando raster 2015 para a extensão dos buffers ano 2015
+
+mb_br_15 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/brazil_coverage_2015.tif")
+
+mb_br_15_crop <- crop(mb_br_15, buf_5km)
+
+#output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
+
+
+#writeRaster(mb_br_15_crop, paste0(output, "mb_br_15_crop_WGS84.tif"),     
+#            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
 
 
 ## Métricas para buffer 5km ----------------------------------------------------
