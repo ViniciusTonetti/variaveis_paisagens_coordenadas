@@ -35,8 +35,35 @@ writeRaster(rast_bin, paste0(output, "sp_pr_forest_", ano[i], ".tif"),
 }
 
 
+# Calculando idade da floresta -------------------------------------------------
+################################################################################
+
+## stack dos rasters cortados 
+
+raster_anual_sp_pr <- list.files("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual",
+                           pattern = "^sp_pr_forest.*\\.tif$", full.names = T)
+
+stack_sp_pr <- terra::rast(raster_anual_sp_pr)
 
 
 
+idade_floresta_2015 <- app(stack_sp_pr, fun = function(x) {
+  
+  # mantém NA se o pixel for NA em toda a série
+  if (all(is.na(x))) return(NA)
+  
+  # se em 2015 não é floresta, idade = 0
+  if (is.na(x[length(x)]) || x[length(x)] == 0) return(0)
+  
+  # conta anos consecutivos com floresta a partir de 2015 para trás
+  r <- rev(x)
+  primeiro_zero <- which(r == 0)[1]
+  
+  if (is.na(primeiro_zero)) {
+    return(length(x))
+  } else {
+    return(primeiro_zero - 1)
+  }
+})
 
 
