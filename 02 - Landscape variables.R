@@ -1,39 +1,39 @@
-# Extraindo vaiárveis paisagem para coordenadas específicas
+# Code used to calculate landscape variables for the analysis used in
+# Ballarin et al - Network-based assessment of habitat source–sink dynamics.
+# 
+# Written by Vinicius Tonetti* and reviewed by the other authors
+# Contact email: vrtonetti@gmail.com
 
-# pacotes e limpando ambiente --------------------------------------------------
 
-rm(list = ls())
-
-#remotes::install_github("mauriciovancine/atlanticr")
+# Loading packages and cleaning environment ------------------------------------
 
 library(terra)
 library(landscapemetrics)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 library(usdm)
 library(openxlsx)
 
-
-# pontos e buffers -------------------------------------------------------------
-
-pts <- terra::vect("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/pontos/pts_paisagens.shp")
+rm(list = ls())
 
 
-# Considerando apenas os pontos que foram usados nas análises
+# Sampling locations and landscape buffers -------------------------------------
 
-pts$mun
+pts <- terra::vect("data/points/pts_paisagens.shp")
 
+
+# Retain only the sampling points used in the analyses --------------------------
 
 pts_filtered <- pts[!pts$mun %in% c("Campo Mour�o", "Cruzeiro", "Piraju", "Santa Helena"), ]
-
 pts_filtered$mun
 
 
-# convertendopara sirgas para criar os buffers
+# Converting to the Coordinate Reference System to SIRGAS 2000 / Brazil Mercator (EPSG 5641) 
+# to create different buffer sizes around sampling locations
+
 pts_sirgas <- terra::project(pts_filtered, "EPSG:5641")
 
 
-# criando os buffers de 2 km
+# Creating buffers
 
 buf_500m <- terra::buffer(pts_sirgas, width = 500)
 buf_1km <- terra::buffer(pts_sirgas, width = 1000)
@@ -42,7 +42,7 @@ buf_3km <- terra::buffer(pts_sirgas, width = 3000)
 buf_5km <- terra::buffer(pts_sirgas, width = 5000)
 
 
-# reconvertendo para WGS84
+# # Reprojecting to WGS84 to extract MapBiomas data 
 
 buf_500m <- terra::project(buf_500m, "EPSG:4326")
 buf_1km <- terra::project(buf_1km, "EPSG:4326")
@@ -51,98 +51,84 @@ buf_3km <- terra::project(buf_3km, "EPSG:4326")
 buf_5km <- terra::project(buf_5km, "EPSG:4326")
 
 
-# Cobertura da terra ano 2022 coleção 10 MapBiomas -----------------------------
+# Land-cover map for 2015 from MapBiomas Collection 10 -------------------------
 
-#mb_br_15 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/brazil_coverage_2015.tif")
-
-#mb_br_15_SIRGAS <- project(mb_br_15, "EPSG:5641", method = "near")
-
-#output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
-  
-#writeRaster(mb_br_15_SIRGAS, paste0(output, "mb_br_15_SIRGAS.tif"),     
-#            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+mb_br_15 <- terra::rast("data/mapbiomas/brazil_coverage_2015.tif")
 
 
-# cortando a extensão do mapbiomas para a extensão dos polígonos
+# Crop the 2015 raster to the extent of the 5-km buffers -----------------------
 
-#mb_br_15_SIRGAS_crop <- crop(mb_br_15_SIRGAS, buf_1km)
+mb_br_15 <- terra::rast("data/mapbiomas/brazil_coverage_2015.tif") # path for the output folder where MapBiomas data
+                                                                   # for the year 2015 is saved
 
-#plot(mb_br_15_SIRGAS_crop)# garantir que o raster é categórico
+mb_br_15_crop <- terra::crop(mb_br_15, buf_5km)
 
-#mb_br_15_SIRGAS_crop <- as.int(mb_br_15_SIRGAS_crop)
-
-
-#writeRaster(mb_br_15_SIRGAS_crop, paste0(output, "mb_br_15_SIRGAS_crop_ext.tif"),     
-#            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+output <- "data/mapbiomas/" # path for the output folder where cropped layers will be saved
 
 
-## Cortando raster 2015 para a extensão dos buffers ano 2015
-
-#mb_br_15 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/brazil_coverage_2015.tif")
-
-#mb_br_15_crop <- crop(mb_br_15, buf_1km)
-
-#output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/"
-
-
-#writeRaster(mb_br_15_crop, paste0(output, "mb_br_15_crop_WGS84.tif"),     
-#            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
-
+writeRaster(mb_br_15_crop,
+            paste0(output, "mb_br_15_crop_WGS84.tif"),     
+            gdal=c("COMPRESS=DEFLATE", "TFW=YES"),
+            overwrite = T)
 
 
 ################################################################################
-## Métricas para buffer 5km ----------------------------------------------------
+## Extracting landscape metrics for the 5-km buffer ----------------------------
 ################################################################################
 
-# calculando idade dos frags ---------------------------------------------------
+# Loading forest patch age raster ----------------------------------------------
 
-idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+forest_age_2015 <- terra::rast("data/mapbiomas/anual/forest_age_2015.tif")
 
 
-idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_5km, df = TRUE) %>%
-  rename(idade = lyr.1) %>%
+forest_age_by_landscape <- terra::extract(forest_age_2015, buf_5km, df = TRUE) %>%
+  rename(age = lyr.1) %>%
   group_by(ID) %>%
-  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
-            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
-            idade_media_floresta = ifelse(n_pixels_floresta > 0,
-                                          soma_idade_floresta / n_pixels_floresta,
-                                          NA_real_), .groups = "drop") %>% 
-  select(ID, idade_media_floresta) %>% 
+  summarise(sum_forest_age_2015 = sum(idade[age > 0], na.rm = TRUE),
+            n_pixels_florest_age = sum(age > 0, na.rm = TRUE),
+            mean_forest_age = ifelse(n_pixels_florest_age > 0,
+                                     sum_forest_age_2015 / n_pixels_florest_age,
+                                     NA_real_), .groups = "drop") %>% 
+  select(ID, mean_forest_age) %>% 
   rename(plot_id = ID)
 
 
-# Calculando demais métricas da paisagem ---------------------------------------
+# Calculating additional landscape metrics -------------------------------------
 
-mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
-
-
-# calcular métricas por polígono
+mb_br_15_WGS84_crop <- terra::rast("data/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 mets_5km <- sample_lsm(
-  landscape = mb_br_15_WGS84_crop ,
+  landscape = mb_br_15_WGS84_crop,
   y = buf_5km,
-  what = c("lsm_c_pland", #% de floresta na paisagem
-           "lsm_c_ed", # densidade de borda da floresta
-           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
-           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
-           "lsm_c_np", # número de fragmentos
-           "lsm_l_shdi", # índice de diversidade de shannon
-           "lsm_l_pr", # número de tipos de uso da terra
-           "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
+  what = c(
+    "lsm_c_pland",    # percentage of forest cover in the landscape
+    "lsm_c_ed",       # forest edge density
+    "lsm_c_lsi",      # Landscape Shape Index: patch shape complexity; more irregular shapes indicate greater edge influence
+    "lsm_c_area_mn",  # mean forest patch area
+    "lsm_c_np",       # number of forest patches
+    "lsm_l_shdi",     # Shannon diversity index
+    "lsm_l_pr",       # number of land-cover classes
+    "lsm_c_core_mn"   # mean forest core area
+  ),
+  edge_depth = 1      # edge depth = 1 cell (~30 m)
+)
 
 
-# métricas de paisagem, shannon e número de tipos de cobertura da terra
+# Landscape-level metrics: Shannon diversity index and number of land-cover classes
 mets_landscape <- mets_5km %>% 
-  filter(level == "landscape",
-         metric %in% c("shdi", "pr"))
+  filter(
+    level == "landscape",
+    metric %in% c("shdi", "pr")
+  )
 
-# métricas de classe 3, floresta
+# Metrics calculated for pixels classified as forest (class 3 in MapBiomas)
 mets_forest <- mets_5km %>% 
-  filter(level == "class",
-         class == 3)
+  filter(
+    level == "class",
+    class == 3
+  )
 
-# Unindo os tibbles baseado em plot id
+# Joining tibbles based on plot ID
 mets_comb_5km <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
@@ -153,83 +139,87 @@ mets_comb_5km <- mets_landscape %>%
   left_join(idade_por_paisagem,
             by = "plot_id")
 
-
 mets_comb_5km$mun_name <- buf_5km$mun
 
 
-# Calculando o VIF para o buffer de 5km ----------------------------------------
+# Calculating VIF for the 5-km buffer ------------------------------------------
 
-mets_comb_df <- data.frame(mets_comb_5km[,2:10])
+mets_comb_df <- data.frame(mets_comb_5km[, 2:10])
 
 vif_5km <- vifstep(mets_comb_df, th = 3)
 vif_5km
 
 df_selected <- exclude(mets_comb_df, vif_5km)
 
-# Variáveis mantidas após exclusão da correlação
 
-# pr - número de tipos de uso da terra
-# shdi - índice de diversidade de shannon
-# core_mn - área média de interior de floresta
-# np - número de fragmentos
-# idade dos pixels de floresta
+# Variables retained after removing collinearity -------------------------------
 
-variaveis_mantidas <- colnames(df_selected )
+# pr          - number of land-cover classes
+# shdi        - Shannon diversity index
+# core_mn     - mean forest core area
+# np          - number of forest patches
+# forest_age  - age of forest pixels
+
+selected_variables <- colnames(df_selected)
 
 
 ################################################################################
-## Métricas para buffer 3km ----------------------------------------------------
+## Extracting landscape metrics for the 3-km buffer ----------------------------
 ################################################################################
 
-# calculando idade dos frags ---------------------------------------------------
+# Loading forest patch age raster ----------------------------------------------
 
-idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+forest_age_2015 <- terra::rast("data/mapbiomas/anual/forest_age_2015.tif")
 
 
-idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_3km, df = TRUE) %>%
-  rename(idade = lyr.1) %>%
+forest_age_by_landscape <- terra::extract(forest_age_2015, buf_3km, df = TRUE) %>%
+  rename(age = lyr.1) %>%
   group_by(ID) %>%
-  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
-            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
-            idade_media_floresta = ifelse(n_pixels_floresta > 0,
-                                          soma_idade_floresta / n_pixels_floresta,
-                                          NA_real_), .groups = "drop") %>% 
-  select(ID, idade_media_floresta) %>% 
+  summarise(sum_forest_age_2015 = sum(idade[age > 0], na.rm = TRUE),
+            n_pixels_florest_age = sum(age > 0, na.rm = TRUE),
+            mean_forest_age = ifelse(n_pixels_florest_age > 0,
+                                     sum_forest_age_2015 / n_pixels_florest_age,
+                                     NA_real_), .groups = "drop") %>% 
+  select(ID, mean_forest_age) %>% 
   rename(plot_id = ID)
 
 
-# Calculando demais métricas da paisagem ---------------------------------------
+# Calculating additional landscape metrics -------------------------------------
 
-mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
-
-
-# calcular métricas por polígono
+mb_br_15_WGS84_crop <- terra::rast("data/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 mets_3km <- sample_lsm(
-  landscape = mb_br_15_WGS84_crop ,
+  landscape = mb_br_15_WGS84_crop,
   y = buf_3km,
-  what = c("lsm_c_pland", #% de floresta na paisagem
-           "lsm_c_ed", # densidade de borda da floresta
-           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
-           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
-           "lsm_c_np", # número de fragmentos
-           "lsm_l_shdi", # índice de diversidade de shannon
-           "lsm_l_pr", # número de tipos de uso da terra
-           "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
+  what = c(
+    "lsm_c_pland",    # percentage of forest cover in the landscape
+    "lsm_c_ed",       # forest edge density
+    "lsm_c_lsi",      # Landscape Shape Index: patch shape complexity; more irregular shapes indicate greater edge influence
+    "lsm_c_area_mn",  # mean forest patch area
+    "lsm_c_np",       # number of forest patches
+    "lsm_l_shdi",     # Shannon diversity index
+    "lsm_l_pr",       # number of land-cover classes
+    "lsm_c_core_mn"   # mean forest core area
+  ),
+  edge_depth = 1      # edge depth = 1 cell (~30 m)
+)
 
 
-# métricas de paisagem, shannon e número de tipos de cobertura da terra
+# Landscape-level metrics: Shannon diversity index and number of land-cover classes
 mets_landscape <- mets_3km %>% 
-  filter(level == "landscape",
-         metric %in% c("shdi", "pr"))
+  filter(
+    level == "landscape",
+    metric %in% c("shdi", "pr")
+  )
 
-# métricas de classe 3, floresta
+# Metrics calculated for pixels classified as forest (class 3 in MapBiomas)
 mets_forest <- mets_3km %>% 
-  filter(level == "class",
-         class == 3)
+  filter(
+    level == "class",
+    class == 3
+  )
 
-# Unindo os tibbles baseado em plot id
+# Joining tibbles based on plot ID
 mets_comb_3km <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
@@ -240,63 +230,66 @@ mets_comb_3km <- mets_landscape %>%
   left_join(idade_por_paisagem,
             by = "plot_id")
 
-
 mets_comb_3km$mun_name <- buf_3km$mun
 
 
 ################################################################################
-## Métricas para buffer 2km ----------------------------------------------------
+## Extracting landscape metrics for the 2-km buffer ----------------------------
 ################################################################################
 
-# calculando idade dos frags ---------------------------------------------------
+# Loading forest patch age raster ----------------------------------------------
 
-idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+forest_age_2015 <- terra::rast("data/mapbiomas/anual/forest_age_2015.tif")
 
 
-idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_2km, df = TRUE) %>%
-  rename(idade = lyr.1) %>%
+forest_age_by_landscape <- terra::extract(forest_age_2015, buf_2km, df = TRUE) %>%
+  rename(age = lyr.1) %>%
   group_by(ID) %>%
-  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
-            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
-            idade_media_floresta = ifelse(n_pixels_floresta > 0,
-                                          soma_idade_floresta / n_pixels_floresta,
-                                          NA_real_), .groups = "drop") %>% 
-  select(ID, idade_media_floresta) %>% 
+  summarise(sum_forest_age_2015 = sum(idade[age > 0], na.rm = TRUE),
+            n_pixels_florest_age = sum(age > 0, na.rm = TRUE),
+            mean_forest_age = ifelse(n_pixels_florest_age > 0,
+                                     sum_forest_age_2015 / n_pixels_florest_age,
+                                     NA_real_), .groups = "drop") %>% 
+  select(ID, mean_forest_age) %>% 
   rename(plot_id = ID)
 
 
-# Calculando demais métricas da paisagem ---------------------------------------
+# Calculating additional landscape metrics -------------------------------------
 
-mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
-
-
-# calcular métricas por polígono
+mb_br_15_WGS84_crop <- terra::rast("data/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 mets_2km <- sample_lsm(
-  landscape = mb_br_15_WGS84_crop ,
+  landscape = mb_br_15_WGS84_crop,
   y = buf_2km,
-  what = c("lsm_c_pland", #% de floresta na paisagem
-           "lsm_c_ed", # densidade de borda da floresta
-           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
-           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
-           "lsm_c_np", # número de fragmentos
-           "lsm_l_shdi", # índice de diversidade de shannon
-           "lsm_l_pr", # número de tipos de uso da terra
-           "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
+  what = c(
+    "lsm_c_pland",    # percentage of forest cover in the landscape
+    "lsm_c_ed",       # forest edge density
+    "lsm_c_lsi",      # Landscape Shape Index: patch shape complexity; more irregular shapes indicate greater edge influence
+    "lsm_c_area_mn",  # mean forest patch area
+    "lsm_c_np",       # number of forest patches
+    "lsm_l_shdi",     # Shannon diversity index
+    "lsm_l_pr",       # number of land-cover classes
+    "lsm_c_core_mn"   # mean forest core area
+  ),
+  edge_depth = 1      # edge depth = 1 cell (~30 m)
+)
 
 
-# métricas de paisagem, shannon e número de tipos de cobertura da terra
+# Landscape-level metrics: Shannon diversity index and number of land-cover classes
 mets_landscape <- mets_2km %>% 
-  filter(level == "landscape",
-         metric %in% c("shdi", "pr"))
+  filter(
+    level == "landscape",
+    metric %in% c("shdi", "pr")
+  )
 
-# métricas de classe 3, floresta
+# Metrics calculated for pixels classified as forest (class 3 in MapBiomas)
 mets_forest <- mets_2km %>% 
-  filter(level == "class",
-         class == 3)
+  filter(
+    level == "class",
+    class == 3
+  )
 
-# Unindo os tibbles baseado em plot id
+# Joining tibbles based on plot ID
 mets_comb_2km <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
@@ -307,63 +300,66 @@ mets_comb_2km <- mets_landscape %>%
   left_join(idade_por_paisagem,
             by = "plot_id")
 
-
 mets_comb_2km$mun_name <- buf_2km$mun
 
 
 ################################################################################
-## Métricas para buffer 1km ----------------------------------------------------
+## Extracting landscape metrics for the 1-km buffer ----------------------------
 ################################################################################
 
-# calculando idade dos frags ---------------------------------------------------
+# Loading forest patch age raster ----------------------------------------------
 
-idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+forest_age_2015 <- terra::rast("data/mapbiomas/anual/forest_age_2015.tif")
 
 
-idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_1km, df = TRUE) %>%
-  rename(idade = lyr.1) %>%
+forest_age_by_landscape <- terra::extract(forest_age_2015, buf_1km, df = TRUE) %>%
+  rename(age = lyr.1) %>%
   group_by(ID) %>%
-  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
-            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
-            idade_media_floresta = ifelse(n_pixels_floresta > 0,
-                                          soma_idade_floresta / n_pixels_floresta,
-                                          NA_real_), .groups = "drop") %>% 
-  select(ID, idade_media_floresta) %>% 
+  summarise(sum_forest_age_2015 = sum(idade[age > 0], na.rm = TRUE),
+            n_pixels_florest_age = sum(age > 0, na.rm = TRUE),
+            mean_forest_age = ifelse(n_pixels_florest_age > 0,
+                                     sum_forest_age_2015 / n_pixels_florest_age,
+                                     NA_real_), .groups = "drop") %>% 
+  select(ID, mean_forest_age) %>% 
   rename(plot_id = ID)
 
 
-# Calculando demais métricas da paisagem ---------------------------------------
+# Calculating additional landscape metrics -------------------------------------
 
-mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
-
-
-# calcular métricas por polígono
+mb_br_15_WGS84_crop <- terra::rast("data/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 mets_1km <- sample_lsm(
-  landscape = mb_br_15_WGS84_crop ,
+  landscape = mb_br_15_WGS84_crop,
   y = buf_1km,
-  what = c("lsm_c_pland", #% de floresta na paisagem
-           "lsm_c_ed", # densidade de borda da floresta
-           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
-           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
-           "lsm_c_np", # número de fragmentos
-           "lsm_l_shdi", # índice de diversidade de shannon
-           "lsm_l_pr", # número de tipos de uso da terra
-           "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
+  what = c(
+    "lsm_c_pland",    # percentage of forest cover in the landscape
+    "lsm_c_ed",       # forest edge density
+    "lsm_c_lsi",      # Landscape Shape Index: patch shape complexity; more irregular shapes indicate greater edge influence
+    "lsm_c_area_mn",  # mean forest patch area
+    "lsm_c_np",       # number of forest patches
+    "lsm_l_shdi",     # Shannon diversity index
+    "lsm_l_pr",       # number of land-cover classes
+    "lsm_c_core_mn"   # mean forest core area
+  ),
+  edge_depth = 1      # edge depth = 1 cell (~30 m)
+)
 
 
-# métricas de paisagem, shannon e número de tipos de cobertura da terra
+# Landscape-level metrics: Shannon diversity index and number of land-cover classes
 mets_landscape <- mets_1km %>% 
-  filter(level == "landscape",
-         metric %in% c("shdi", "pr"))
+  filter(
+    level == "landscape",
+    metric %in% c("shdi", "pr")
+  )
 
-# métricas de classe 3, floresta
+# Metrics calculated for pixels classified as forest (class 3 in MapBiomas)
 mets_forest <- mets_1km %>% 
-  filter(level == "class",
-         class == 3)
+  filter(
+    level == "class",
+    class == 3
+  )
 
-# Unindo os tibbles baseado em plot id
+# Joining tibbles based on plot ID
 mets_comb_1km <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
@@ -374,62 +370,66 @@ mets_comb_1km <- mets_landscape %>%
   left_join(idade_por_paisagem,
             by = "plot_id")
 
-
 mets_comb_1km$mun_name <- buf_1km$mun
 
+
 ################################################################################
-## Métricas para buffer 500m ----------------------------------------------------
+## Extracting landscape metrics for the 500-m buffer ---------------------------
 ################################################################################
 
-# calculando idade dos frags ---------------------------------------------------
+# Loading forest patch age raster ----------------------------------------------
 
-idade_floresta_2015 <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/idade_floresta_2015.tif")
+forest_age_2015 <- terra::rast("data/mapbiomas/anual/forest_age_2015.tif")
 
 
-idade_por_paisagem <- terra::extract(idade_floresta_2015, buf_500m, df = TRUE) %>%
-  rename(idade = lyr.1) %>%
+forest_age_by_landscape <- terra::extract(forest_age_2015, buf_500m, df = TRUE) %>%
+  rename(age = lyr.1) %>%
   group_by(ID) %>%
-  summarise(soma_idade_floresta = sum(idade[idade > 0], na.rm = TRUE),
-            n_pixels_floresta = sum(idade > 0, na.rm = TRUE),
-            idade_media_floresta = ifelse(n_pixels_floresta > 0,
-                                          soma_idade_floresta / n_pixels_floresta,
-                                          NA_real_), .groups = "drop") %>% 
-  select(ID, idade_media_floresta) %>% 
+  summarise(sum_forest_age_2015 = sum(idade[age > 0], na.rm = TRUE),
+            n_pixels_florest_age = sum(age > 0, na.rm = TRUE),
+            mean_forest_age = ifelse(n_pixels_florest_age > 0,
+                                     sum_forest_age_2015 / n_pixels_florest_age,
+                                     NA_real_), .groups = "drop") %>% 
+  select(ID, mean_forest_age) %>% 
   rename(plot_id = ID)
 
 
-# Calculando demais métricas da paisagem ---------------------------------------
+# Calculating additional landscape metrics -------------------------------------
 
-mb_br_15_WGS84_crop <- terra::rast("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/mb_br_15_crop_WGS84.tif")
-
-
-# calcular métricas por polígono
+mb_br_15_WGS84_crop <- terra::rast("data/mapbiomas/mb_br_15_crop_WGS84.tif")
 
 mets_500m <- sample_lsm(
-  landscape = mb_br_15_WGS84_crop ,
+  landscape = mb_br_15_WGS84_crop,
   y = buf_500m,
-  what = c("lsm_c_pland", #% de floresta na paisagem
-           "lsm_c_ed", # densidade de borda da floresta
-           "lsm_c_lsi", # landscaoe shape index - complexidade das manchas, formas mais irregulares, mais borda
-           "lsm_c_area_mn", # tamanho médio dos fragmentos de floresta
-           "lsm_c_np", # número de fragmentos
-           "lsm_l_shdi", # índice de diversidade de shannon
-           "lsm_l_pr", # número de tipos de uso da terra
-           "lsm_c_core_mn"), # área média de interior de floresta
-  edge_depth = 1) # profundidade de borda = 1 célula, ~30m
+  what = c(
+    "lsm_c_pland",    # percentage of forest cover in the landscape
+    "lsm_c_ed",       # forest edge density
+    "lsm_c_lsi",      # Landscape Shape Index: patch shape complexity; more irregular shapes indicate greater edge influence
+    "lsm_c_area_mn",  # mean forest patch area
+    "lsm_c_np",       # number of forest patches
+    "lsm_l_shdi",     # Shannon diversity index
+    "lsm_l_pr",       # number of land-cover classes
+    "lsm_c_core_mn"   # mean forest core area
+  ),
+  edge_depth = 1      # edge depth = 1 cell (~30 m)
+)
 
 
-# métricas de paisagem, shannon e número de tipos de cobertura da terra
+# Landscape-level metrics: Shannon diversity index and number of land-cover classes
 mets_landscape <- mets_500m %>% 
-  filter(level == "landscape",
-         metric %in% c("shdi", "pr"))
+  filter(
+    level == "landscape",
+    metric %in% c("shdi", "pr")
+  )
 
-# métricas de classe 3, floresta
+# Metrics calculated for pixels classified as forest (class 3 in MapBiomas)
 mets_forest <- mets_500m %>% 
-  filter(level == "class",
-         class == 3)
+  filter(
+    level == "class",
+    class == 3
+  )
 
-# Unindo os tibbles baseado em plot id
+# Joining tibbles based on plot ID
 mets_comb_500m <- mets_landscape %>%
   select(plot_id, metric, value) %>%
   tidyr::pivot_wider(names_from = metric, values_from = value) %>%
@@ -440,18 +440,17 @@ mets_comb_500m <- mets_landscape %>%
   left_join(idade_por_paisagem,
             by = "plot_id")
 
-
 mets_comb_500m$mun_name <- buf_500m$mun
 
 
-## Exportando os resultados para excel -----------------------------------------
+## Exporting results to Excel --------------------------------------------------
 ################################################################################
 
-results_5km <- mets_comb_5km[, c('mun_name', variaveis_mantidas)]
-results_3km <- mets_comb_3km[, c('mun_name', variaveis_mantidas)]
-results_2km <- mets_comb_2km[, c('mun_name', variaveis_mantidas)]
-results_1km <- mets_comb_1km[, c('mun_name', variaveis_mantidas)]
-results_500m <- mets_comb_500m[, c('mun_name', variaveis_mantidas)]
+results_5km <- mets_comb_5km[, c('mun_name', selected_variables)]
+results_3km <- mets_comb_3km[, c('mun_name', selected_variables)]
+results_2km <- mets_comb_2km[, c('mun_name', selected_variables)]
+results_1km <- mets_comb_1km[, c('mun_name', selected_variables)]
+results_500m <- mets_comb_500m[, c('mun_name', selected_variables)]
 
 head(results_500m)
 head(results_1km)
@@ -459,26 +458,31 @@ head(results_2km)
 head(results_3km)
 head(results_5km)
 
-# criar workbook
+# Create workbook
 wb <- createWorkbook()
 
-# adicionar abas com os nomes desejados
+# Add worksheets naming them with the results for each buffer
 addWorksheet(wb, "results_500m")
 addWorksheet(wb, "results_1km")
 addWorksheet(wb, "results_2km")
 addWorksheet(wb, "results_3km")
 addWorksheet(wb, "results_5km")
 
-# escrever dados em cada aba
+# Saving data in each tab
 writeData(wb, "results_500m", results_500m)
 writeData(wb, "results_1km", results_1km)
 writeData(wb, "results_2km", results_2km)
 writeData(wb, "results_3km", results_3km)
 writeData(wb, "results_5km", results_5km)
 
-# salvar arquivo
-output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/planilha_resultados/"
-saveWorkbook(wb, paste0(output, "landscape_metrics.xlsx"), overwrite = TRUE)
+# Save workbook
+output <- "data/results/"
+
+saveWorkbook(
+  wb,
+  paste0(output, "landscape_metrics.xlsx"),
+  overwrite = TRUE
+)
 
 
 
