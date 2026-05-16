@@ -5,16 +5,19 @@
 # Contact email: vrtonetti@gmail.com
 
 
-# pacote e limpando ambiente ---------------------------------------------------
-
-rm(list = ls())
+# Loading packages and cleaning environment ------------------------------------
 
 library(terra)
+rm(list = ls())
 
 
-# Carregando rasters -----------------------------------------------------------
+# Loading annual land cover mappings for Brazil --------------------------------
 
-raster_anual <- list.files("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual",
+# Annual land-cover maps for Brazil were downloaded for the years 1985–2015.
+# The data were obtained from MapBiomas Collection 10 on 28/04/2026
+# through the direct download link: https://brasil.mapbiomas.org/en/colecoes-mapbiomas/
+
+raster_anual <- list.files("data/mapbiomas/anual",
                            pattern = "brazil_coverage_", full.names = T)
 
 stack_br <- terra::rast(raster_anual)
