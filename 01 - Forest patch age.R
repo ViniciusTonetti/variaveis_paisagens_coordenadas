@@ -11,7 +11,8 @@ library(terra)
 rm(list = ls())
 
 
-# Loading annual land cover mappings for Brazil --------------------------------
+# Loading annual land cover mappings for Brazil and cropping data --------------
+# for the São Paulo and Paraná states, where field samplings were conducted ----
 
 # Annual land-cover maps for Brazil were downloaded for the years 1985–2015.
 # The data were obtained from MapBiomas Collection 10 on 28/04/2026
@@ -23,49 +24,52 @@ raster_anual <- list.files("data/mapbiomas/anual",
 stack_br <- terra::rast(raster_anual)
 
 
-# Carregando polígono ----------------------------------------------------------
+# Load a vector polygon covering the states of São Paulo and Paraná ------------
+# 
 
-sp_pr <- terra::vect("E:/_PESSOAL/ViniciusT/camadas Delano/br_uf/SP_PR/sp_pr_merge.shp")
-sp_pr <- terra::project(sp_pr, "EPSG:4326")
+sp_pr <- terra::vect("data/vector/SP_PR/sp_pr_merge.shp")
+sp_pr <- terra::project(sp_pr, "EPSG:4326") # Ensure the polygon has the same Coordinate Reference System (CRS)
+                                            # as the MapBiomas data (EPSG:4326)
 
 
-# Cortando e binarizando rasters -----------------------------------------------
+# Cropping and binarizing rasters ----------------------------------------------
+# forest pixels = 1; non-forest pixels = 0
 
-output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/"
+output <- "data/mapbiomas/anual/"
 
-ano <- 1985:2015
+year <- 1985:2015
 
 for (i in 1:length(raster_anual)) {
 rast <- terra::mask(crop(stack_br[[i]], sp_pr), sp_pr)
 rast_bin <- ifel(rast == 3, 1, 0)
-writeRaster(rast_bin, paste0(output, "sp_pr_forest_", ano[i], ".tif"), 
+writeRaster(rast_bin, paste0(output, "sp_pr_forest_", year[i], ".tif"), 
             gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
 }
 
 
-# Calculando idade da floresta -------------------------------------------------
-################################################################################
+# Calculating forest age -------------------------------------------------------
 
-## stack dos rasters cortados 
+## Stack of cropped rasters
 
-raster_anual_sp_pr <- list.files("E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual",
-                           pattern = "^sp_pr_forest.*\\.tif$", full.names = T)
+raster_anual_sp_pr <- list.files("data/mapbiomas/anual",
+                                 pattern = "^sp_pr_forest.*\\.tif$",
+                                 full.names = TRUE)
 
 stack_sp_pr <- terra::rast(raster_anual_sp_pr)
 
 
 
-idade_floresta_2015 <- app(stack_sp_pr, fun = function(x) {
+forest_age_2015 <- app(stack_sp_pr, fun = function(x) {
   
-  # mantém NA se o pixel for NA em toda a série
+  # Keep NA if the pixel is NA throughout the entire time series
   if (all(is.na(x))) return(NA)
   
-  # se em 2015 não é floresta, idade = 0
+  # If the pixel is not forest in 2015, age = 0
   if (is.na(x[length(x)]) || x[length(x)] == 0) return(0)
   
-  # conta anos consecutivos com floresta a partir de 2015 para trás
-  r <- rev(x)
-  primeiro_zero <- which(r == 0)[1]
+  # Count consecutive years of forest cover backwards from 2015
+  reversed_series <- rev(x)
+  first_zero <- which(reversed_series == 0)[1]
   
   if (is.na(primeiro_zero)) {
     return(length(x))
@@ -75,10 +79,15 @@ idade_floresta_2015 <- app(stack_sp_pr, fun = function(x) {
 })
 
 
-plot(idade_floresta_2015)
+plot(forest_age_2015) # Visualizing raster
 
-output <- "E:/_PESSOAL/ViniciusT/variaveis paisagem coordenadas/mapbiomas/anual/"
 
-writeRaster(idade_floresta_2015, paste0(output, "idade_floresta_2015.tif"), 
-            gdal=c("COMPRESS=DEFLATE", "TFW=YES"), overwrite = T)
+# Saving raster to the output folder
+
+output <- "data/mapbiomas/anual/"
+
+writeRaster(forest_age_2015,
+            paste0(output, "idade_floresta_2015.tif"), 
+            gdal=c("COMPRESS=DEFLATE", "TFW=YES"),
+            overwrite = T)
 
