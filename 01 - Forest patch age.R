@@ -1,4 +1,9 @@
-## Calculando idade frags paisagens
+# Code used to calculate the age of forest fragments (time elapsed since the last deforestation) 
+# for the analysis used in Ballarin et al - Network-based assessment of habitat source–sink dynamics.
+# 
+# Written by Vinicius Tonetti* and reviewed by the other authors
+# Contact email: vrtonetti@gmail.com
+
 
 # pacote e limpando ambiente ---------------------------------------------------
 
